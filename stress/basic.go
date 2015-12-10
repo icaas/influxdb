@@ -251,7 +251,8 @@ type BasicClient struct {
 	interval time.Duration
 }
 
-func (c *BasicClient) retry(b []byte) {
+func (c *BasicClient) retry(b []byte, backoff time.Duration) {
+	bo := backoff + time.Duration(500*time.Millisecond)
 	rs, err := c.send(b)
 	if err != nil {
 		fmt.Println(err)
@@ -260,8 +261,9 @@ func (c *BasicClient) retry(b []byte) {
 
 	c.r <- rs
 	if !rs.Success() {
-		fmt.Println("GOT HERE!!!!******")
-		c.retry(b)
+		fmt.Printf("Sleeping for %v\n", bo)
+		time.Sleep(bo)
+		c.retry(b, bo)
 	}
 }
 
@@ -307,7 +309,7 @@ func (c *BasicClient) Batch(ps <-chan Point, r chan<- response) error {
 			wg.Add(1)
 			counter.Increment()
 			go func(byt []byte) {
-				c.retry(byt)
+				c.retry(byt, time.Duration(1))
 				counter.Decrement()
 				wg.Done()
 			}(b)
